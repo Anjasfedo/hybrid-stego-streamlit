@@ -76,7 +76,7 @@ bits_per_channel = st.sidebar.slider(
 )
 
 # Main interface using tabs
-tab1, tab2, tab3 = st.tabs(["📊 Message Generator", "📝 Embed Message", "🔍 Extract Message"])
+tab1, tab2 = st.tabs(["📝 Embed Message", "🔍 Extract Message"])
 
 # Helper functions
 def load_image(uploaded_file):
@@ -115,83 +115,79 @@ def calculate_image_capacity(image_shape, bits_per_channel):
     max_chars = max_bytes  # Approximate for UTF-8
     return max_bits, max_bytes, max_chars
 
-# Tab 1: Message Generator
+# Tab 1: Embed Message (with integrated Message Generator)
 with tab1:
-    st.markdown('<h2 class="method-header">📊 Message Generator</h2>', unsafe_allow_html=True)
-
-    st.markdown("""
-    Generate test messages with specific sizes for testing steganography capacity and performance.
-    """)
-
-    col1, col2 = st.columns([2, 1])
-
-    with col1:
-        base_message = st.text_area(
-            "Base message:",
-            value=my_message,
-            height=150,
-            help="The base message to be padded to the target size."
-        )
-
-        target_size = st.number_input(
-            "Target message size (bytes):",
-            min_value=1,
-            max_value=10000,
-            value=500,
-            step=50,
-            help="The exact byte size for the generated message."
-        )
-
-    with col2:
-        st.markdown("### Message Info")
-        if base_message:
-            current_size = len(base_message.encode('utf-8'))
-            st.metric("Current Size", f"{current_size} bytes")
-
-            if target_size > current_size:
-                padding_needed = target_size - current_size
-                st.metric("Padding Needed", f"{padding_needed} bytes")
-            else:
-                st.warning("⚠️ Target size is smaller than current message size!")
-
-    if st.button("🎯 Generate Message", type="primary", use_container_width=True):
-        if base_message:
-            generated_message = create_pattern_padded_message(base_message, target_size)
-            actual_size = len(generated_message.encode('utf-8'))
-
-            st.success("✅ Message generated successfully!")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("### Generated Message")
-                st.text_area(
-                    "Result:",
-                    value=generated_message,
-                    height=200,
-                    disabled=True
-                )
-
-            with col2:
-                st.markdown("### Message Statistics")
-                st.metric("Target Size", f"{target_size} bytes")
-                st.metric("Actual Size", f"{actual_size} bytes")
-                st.metric("Characters", f"{len(generated_message)}")
-
-                if actual_size == target_size:
-                    st.success("✅ Perfect size match!")
-                else:
-                    st.info(f"ℹ️ Size difference: {abs(actual_size - target_size)} bytes")
-
-            # Store in session state for easy use in other tabs
-            st.session_state.generated_message = generated_message
-
-            # Copy to clipboard button
-            st.code(generated_message, language="text")
-
-# Tab 2: Embed Message
-with tab2:
     st.markdown('<h2 class="method-header">📝 Embed Message using LSB</h2>', unsafe_allow_html=True)
 
+    # Message Generator Section
+    with st.expander("🎯 Message Generator (Optional)", expanded=False):
+        st.markdown("""
+        Generate test messages with specific sizes for testing steganography capacity and performance.
+        """)
+
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            base_message = st.text_area(
+                "Base message:",
+                value=my_message,
+                height=100,
+                help="The base message to be padded to the target size."
+            )
+
+            target_size = st.number_input(
+                "Target message size (bytes):",
+                min_value=1,
+                max_value=10000,
+                value=500,
+                step=50,
+                help="The exact byte size for the generated message."
+            )
+
+        with col2:
+            st.markdown("### Message Info")
+            if base_message:
+                current_size = len(base_message.encode('utf-8'))
+                st.metric("Current Size", f"{current_size} bytes")
+
+                if target_size > current_size:
+                    padding_needed = target_size - current_size
+                    st.metric("Padding Needed", f"{padding_needed} bytes")
+                else:
+                    st.warning("⚠️ Target size is smaller than current message size!")
+
+        if st.button("🎯 Generate Message", type="secondary", use_container_width=False):
+            if base_message:
+                generated_message = create_pattern_padded_message(base_message, target_size)
+                actual_size = len(generated_message.encode('utf-8'))
+
+                st.success("✅ Message generated successfully!")
+                st.session_state.generated_message = generated_message
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("### Generated Message")
+                    st.text_area(
+                        "Result:",
+                        value=generated_message,
+                        height=150,
+                        disabled=True
+                    )
+
+                with col2:
+                    st.markdown("### Message Statistics")
+                    st.metric("Target Size", f"{target_size} bytes")
+                    st.metric("Actual Size", f"{actual_size} bytes")
+                    st.metric("Characters", f"{len(generated_message)}")
+
+                    if actual_size == target_size:
+                        st.success("✅ Perfect size match!")
+                    else:
+                        st.info(f"ℹ️ Size difference: {abs(actual_size - target_size)} bytes")
+
+    st.markdown("---")
+
+    # Embedding Section
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -221,7 +217,7 @@ with tab2:
         use_generated = st.checkbox(
             "Use message from generator",
             value='generated_message' in st.session_state,
-            help="Use the message generated in the Message Generator tab"
+            help="Use the message generated above"
         )
 
         if use_generated and 'generated_message' in st.session_state:
@@ -229,7 +225,7 @@ with tab2:
                 "Generated message:",
                 value=st.session_state.generated_message,
                 height=150,
-                help="The generated message from the Message Generator tab."
+                help="The generated message from the generator above."
             )
             st.info(f"📏 Message length: {len(message_input.encode('utf-8'))} bytes")
         else:
@@ -277,15 +273,14 @@ with tab2:
                     st.markdown("### Result")
                     display_image_comparison(cover_display, stego_display)
 
-                    # Show embedding info
-                    col1, col2, col3 = st.columns(3)
+                    # Show embedding bit_length info (copyable)
+                    col1, col2 = st.columns([1, 1])
                     with col1:
-                        st.metric("Message Length", f"{len(message_input)} chars")
+                        st.info("📏 **Bit Length Used:**")
                     with col2:
-                        st.metric("Bits Used", f"{bit_length:,}")
-                    with col3:
-                        capacity_used = (bit_length / max_bits * 100) if 'max_bits' in locals() else 0
-                        st.metric("Capacity Used", f"{capacity_used:.1f}%")
+                        # Make bit_length copyable using st.code
+                        bit_length_text = f"{bit_length:,} bits ({bit_length//8} bytes)"
+                        st.code(bit_length_text, language="text")
 
                     # Download button
                     st.markdown("### Download Stego Image")
@@ -309,8 +304,8 @@ with tab2:
         else:
             st.warning("⚠️ Please upload an image and enter a message.")
 
-# Tab 3: Extract Message
-with tab3:
+# Tab 2: Extract Message
+with tab2:
     st.markdown('<h2 class="method-header">🔍 Extract Message from LSB</h2>', unsafe_allow_html=True)
 
     # Option to use stego from previous tab or upload new one
@@ -345,15 +340,25 @@ with tab3:
             if stego_image is not None:
                 st.image(stego_display, caption="Uploaded Stego Image", use_container_width=True)
 
-                # Need bit length for extraction
+                # Extraction parameters - auto-detect or manual
                 st.markdown("### Extraction Parameters")
-                bit_length = st.number_input(
-                    "Bit length of embedded message:",
-                    min_value=1,
-                    value=100,
-                    step=1,
-                    help="The exact number of bits that were embedded in the image."
+                auto_detect = st.checkbox(
+                    "🔍 Auto-detect message length",
+                    value=True,
+                    help="Automatically detect the embedded message length"
                 )
+
+                if not auto_detect:
+                    bit_length = st.number_input(
+                        "Bit length of embedded message:",
+                        min_value=1,
+                        value=100,
+                        step=1,
+                        help="The exact number of bits that were embedded in the image."
+                    )
+                else:
+                    bit_length = None
+                    st.info("🔍 Will automatically detect message length during extraction")
 
     # Optional inputs for metrics calculation
     if stego_image is not None:
@@ -413,25 +418,34 @@ with tab3:
 
         # Extract button
         if st.button("🔍 Extract Message", type="primary", use_container_width=True):
-            if bit_length is None:
-                st.error("❌ Please provide the bit length for extraction.")
-            else:
-                try:
-                    with st.spinner("Extracting message..."):
-                        lsb = LSBSteganography(bits_per_channel=bits_per_channel)
-                        extracted_message = lsb.extract(stego_image, bit_length)
+            try:
+                with st.spinner("Extracting message..."):
+                    lsb = LSBSteganography(bits_per_channel=bits_per_channel)
 
-                        st.success("✅ Message extracted successfully!")
-                        st.markdown("### Extracted Message")
-                        st.code(extracted_message, language="text")
+                    if auto_detect or bit_length is None:
+                        # Use auto-detection
+                        extracted_message, detected_bit_length = lsb.extract_auto(stego_image)
+                        if detected_bit_length > 0:
+                            st.info(f"🔍 Auto-detected message length: {detected_bit_length} bits ({detected_bit_length//8} bytes)")
+                            bit_length = detected_bit_length
+                        else:
+                            st.warning("⚠️ Could not auto-detect message. Please provide manual bit length.")
+                            st.stop()
+                    else:
+                        # Use manual bit length
+                        extracted_message, returned_bit_length = lsb.extract(stego_image, bit_length)
 
-                        # Image Quality Metrics (if enabled)
-                        if enable_image_metrics and original_file:
-                            st.markdown("### 📊 Image Quality Metrics")
+                    st.success("✅ Message extracted successfully!")
+                    st.markdown("### Extracted Message")
+                    st.code(extracted_message, language="text")
 
-                            original_image, original_display = load_image(original_file)
-                            if original_image is not None:
-                                try:
+                    # Image Quality Metrics (if enabled)
+                    if enable_image_metrics and original_file:
+                        st.markdown("### 📊 Image Quality Metrics")
+
+                        original_image, original_display = load_image(original_file)
+                        if original_image is not None:
+                            try:
                                     # Calculate image quality metrics
                                     metrics_calc = SteganographyMetrics(original_image, stego_image)
                                     all_metrics = metrics_calc.get_all_metrics()
@@ -488,21 +502,21 @@ with tab3:
                                     display_image_comparison(original_display_rgb, stego_display_rgb,
                                                           "Original Image", "Stego Image")
 
-                                except Exception as e:
-                                    st.error(f"❌ Error calculating image metrics: {str(e)}")
+                            except Exception as e:
+                                st.error(f"❌ Error calculating image metrics: {str(e)}")
 
-                        # Message Accuracy Metrics (if enabled)
-                        if enable_message_accuracy and original_message_input:
-                            st.markdown("### 🎯 Message Accuracy Metrics")
+                    # Message Accuracy & Robustness Analysis (if enabled)
+                    if enable_message_analysis and original_message_input:
+                        st.markdown("### 🎯 Message Accuracy Metrics")
 
-                            if len(original_message_input) > 0 and len(extracted_message) > 0:
-                                # Convert to binary for BER calculation
-                                original_binary = message_to_binary(original_message_input)
-                                extracted_binary = message_to_binary(extracted_message)
+                        if len(original_message_input) > 0 and len(extracted_message) > 0:
+                            # Convert to binary for BER calculation
+                            original_binary = message_to_binary(original_message_input)
+                            extracted_binary = message_to_binary(extracted_message)
 
                                 # Calculate BER
-                                min_length = min(len(original_binary), len(extracted_binary))
-                                if min_length > 0:
+                            min_length = min(len(original_binary), len(extracted_binary))
+                            if min_length > 0:
                                     errors = sum(1 for i in range(min_length)
                                                if original_binary[i] != extracted_binary[i])
                                     ber = errors / min_length
@@ -523,65 +537,75 @@ with tab3:
                                             st.error("🔴 Poor")
 
                                 # Message comparison
-                                st.markdown("**Message Comparison:**")
-                                col1, col2 = st.columns(2)
-                                with col1:
+                            st.markdown("**Message Comparison:**")
+                            col1, col2 = st.columns(2)
+                            with col1:
                                     st.markdown("**Original:**")
                                     st.code(original_message_input)
-                                with col2:
+                            with col2:
                                     st.markdown("**Extracted:**")
                                     st.code(extracted_message)
 
-                                if extracted_message == original_message_input:
+                            if extracted_message == original_message_input:
                                     st.success("✅ Perfect message match!")
-                                else:
+                            else:
                                     st.warning("⚠️ Message differs from original.")
 
-                        # Robustness Testing (if enabled)
-                        if enable_robustness and test_attacks and original_file and original_message_input:
-                            st.markdown("### 🛡️ Robustness Testing - BER Heatmap")
-
-                            original_image, original_display = load_image(original_file)
-                            if original_image is not None:
-                                with st.spinner("Running robustness tests..."):
+                        # Robustness Testing (if enabled - only needs original message)
+                        if enable_robustness and test_attacks and original_message_input:
+                            st.markdown("#### 🛡️ Robustness Testing - BER Heatmap")
+                            with st.spinner("Running robustness tests..."):
                                     try:
                                         # Initialize robustness tester - note the constructor signature
 
                                         # Create a custom robustness tester that works with our interface
                                         results = {}
 
-                                        # Map our attack names to the actual functions
+                                        # Map our attack names to the actual functions (complete configuration)
                                         attack_mapping = {
                                             'jpeg_compression': [
-                                                {'name': 'JPEG', 'label': 'JPEG Q=90', 'quality': 90},
-                                                {'name': 'JPEG', 'label': 'JPEG Q=70', 'quality': 70},
-                                                {'name': 'JPEG', 'label': 'JPEG Q=50', 'quality': 50},
-                                                {'name': 'JPEG', 'label': 'JPEG Q=30', 'quality': 30}
+                                                {'name': 'JPEG', 'label': 'JPEG (Q=90)', 'quality': 90},
+                                                {'name': 'JPEG', 'label': 'JPEG (Q=70)', 'quality': 70},
+                                                {'name': 'JPEG', 'label': 'JPEG (Q=50)', 'quality': 50},
+                                                {'name': 'JPEG', 'label': 'JPEG (Q=30)', 'quality': 30},
+                                                {'name': 'JPEG', 'label': 'JPEG (Q=10)', 'quality': 10}
                                             ],
                                             'gaussian_noise': [
-                                                {'name': 'Gaussian_Noise', 'label': 'Gaussian σ=10', 'sigma': 10},
-                                                {'name': 'Gaussian_Noise', 'label': 'Gaussian σ=25', 'sigma': 25}
+                                                {'name': 'Gaussian_Noise', 'label': 'Gaussian (σ=10)', 'sigma': 10},
+                                                {'name': 'Gaussian_Noise', 'label': 'Gaussian (σ=25)', 'sigma': 25}
                                             ],
                                             'salt_pepper_noise': [
-                                                {'name': 'SP_Noise', 'label': 'S&P d=0.01', 'density': 0.01},
-                                                {'name': 'SP_Noise', 'label': 'S&P d=0.03', 'density': 0.03}
+                                                {'name': 'SP_Noise', 'label': 'S&P (d=0.01)', 'density': 0.01},
+                                                {'name': 'SP_Noise', 'label': 'S&P (d=0.03)', 'density': 0.03}
                                             ],
                                             'crop': [
-                                                {'name': 'Crop', 'label': 'Crop 10%', 'crop_percent': 10}
+                                                {'name': 'Crop', 'label': 'Crop (10%)', 'crop_percent': 10}
                                             ],
                                             'rotation': [
-                                                {'name': 'Rotate', 'label': 'Rotate 3°', 'angle': 3},
-                                                {'name': 'Rotate', 'label': 'Rotate 9°', 'angle': 9},
-                                                {'name': 'Rotate', 'label': 'Rotate 18°', 'angle': 18}
+                                                {'name': 'Rotate', 'label': 'Rotate (3°)', 'angle': 3},
+                                                {'name': 'Rotate', 'label': 'Rotate (9°)', 'angle': 9},
+                                                {'name': 'Rotate', 'label': 'Rotate (18°)', 'angle': 18},
+                                                {'name': 'Rotate', 'label': 'Rotate (36°)', 'angle': 36}
                                             ],
                                             'scale': [
-                                                {'name': 'Scale', 'label': 'Scale 5%', 'downscale_factor': 0.05},
-                                                {'name': 'Scale', 'label': 'Scale 10%', 'downscale_factor': 0.1},
-                                                {'name': 'Scale', 'label': 'Scale 20%', 'downscale_factor': 0.2}
+                                                {'name': 'Scale', 'label': 'Scale (5%)', 'downscale_factor': 0.05},
+                                                {'name': 'Scale', 'label': 'Scale (10%)', 'downscale_factor': 0.1},
+                                                {'name': 'Scale', 'label': 'Scale (20%)', 'downscale_factor': 0.2},
+                                                {'name': 'Scale', 'label': 'Scale (40%)', 'downscale_factor': 0.4},
+                                                {'name': 'Scale', 'label': 'Scale (60%)', 'downscale_factor': 0.6},
+                                                {'name': 'Scale', 'label': 'Scale (80%)', 'downscale_factor': 0.8},
+                                                {'name': 'Scale', 'label': 'Scale (100%)', 'downscale_factor': 1.0},
+                                                {'name': 'Scale', 'label': 'Scale (120%)', 'downscale_factor': 1.2},
+                                                {'name': 'Scale', 'label': 'Scale (150%)', 'downscale_factor': 1.5},
+                                                {'name': 'Scale', 'label': 'Scale (200%)', 'downscale_factor': 2.0}
                                             ],
                                             'gaussian_blur': [
-                                                {'name': 'Blur', 'label': 'Blur 9x9', 'kernel_size': (9, 9)},
-                                                {'name': 'Blur', 'label': 'Blur 15x15', 'kernel_size': (15, 15)}
+                                                {'name': 'Blur', 'label': 'Blur (9x9)', 'kernel_size': (9, 9)},
+                                                {'name': 'Blur', 'label': 'Blur (15x15)', 'kernel_size': (15, 15)},
+                                                {'name': 'Blur', 'label': 'Blur (21x21)', 'kernel_size': (21, 21)},
+                                                {'name': 'Blur', 'label': 'Blur (27x27)', 'kernel_size': (27, 27)},
+                                                {'name': 'Blur', 'label': 'Blur (33x33)', 'kernel_size': (33, 33)},
+                                                {'name': 'Blur', 'label': 'Blur (39x39)', 'kernel_size': (39, 39)}
                                             ],
                                             'sharpen': [
                                                 {'name': 'Sharpen', 'label': 'Sharpen'}
@@ -595,44 +619,92 @@ with tab3:
                                         original_binary = message_to_binary(original_message_input)
                                         tester = RobustnessTester(lsb, original_binary)
 
-                                        # Run tests for selected attack categories
+                                        # Run tests for selected attack categories with error handling
                                         all_results = {}
                                         for attack_category in test_attacks:
                                             if attack_category in attack_mapping:
                                                 category_configs = attack_mapping[attack_category]
-                                                category_results = tester.run_all_tests(stego_image, category_configs, bit_length)
-                                                all_results.update(category_results)
+                                                try:
+                                                    category_results = tester.run_all_tests(stego_image, category_configs, returned_bit_length)
+                                                    all_results.update(category_results)
+                                                except Exception as e:
+                                                    # If a specific attack fails, record it as 100% BER (complete failure)
+                                                    st.warning(f"⚠️ Attack category '{attack_category}' failed: {str(e)}")
+                                                    for config in category_configs:
+                                                        all_results[config['label']] = 1.0  # 100% BER indicates complete failure
 
                                         st.success("✅ Robustness testing completed!")
 
-                                        # Create BER heatmap
-                                        st.markdown("#### BER Results Heatmap")
+                                        # Create comprehensive BER heatmap (styled like reference)
+                                        st.markdown("#### 📊 BER Results Heatmap")
 
                                         if all_results:
-                                            # Prepare data for heatmap
+                                            # Prepare data for comprehensive DataFrame
                                             attack_names = list(all_results.keys())
                                             ber_values = list(all_results.values())
 
-                                            # Create a DataFrame-like display for heatmap
-                                            import pandas as pd
+                                            # Create detailed DataFrame with multiple columns
                                             df = pd.DataFrame({
                                                 'Attack': attack_names,
                                                 'BER (%)': [ber * 100 for ber in ber_values],
-                                                'Survival': ['✅ Survived' if ber < 0.01 else '⚠️ Corrupted' if ber < 0.1 else '❌ Lost' for ber in ber_values]
+                                                'Survival': ['✅ Survived' if ber < 0.01 else '⚠️ Corrupted' if ber < 0.1 else '❌ Lost' for ber in ber_values],
+                                                'Payload (Bytes)': [len(original_message_input.encode('utf-8'))] * len(attack_names),
+                                                'Technique': ['LSB'] * len(attack_names),
+                                                'Method BER': [ber * 100 for ber in ber_values],  # Same as BER column for compatibility
+                                                'Average BER': [np.mean(ber_values) * 100] * len(attack_names)
                                             })
 
-                                            # Color-code based on BER values
-                                            def color_ber(val):
-                                                if val < 1:
-                                                    return 'background-color: #d4edda; color: #155724'  # Green - Good
-                                                elif val < 5:
-                                                    return 'background-color: #fff3cd; color: #856404'  # Yellow - Warning
-                                                elif val < 10:
-                                                    return 'background-color: #f8d7da; color: #721c24'  # Light red - Poor
-                                                else:
-                                                    return 'background-color: #721c24; color: white'  # Dark red - Very poor
+                                            # Add individual BER columns for each attack (like reference)
+                                            for i, (attack, ber) in enumerate(zip(attack_names, ber_values)):
+                                                # Create safe column name
+                                                safe_name = attack.replace(' ', '_').replace('(', '').replace(')', '').replace('%', '').replace('°', '')
+                                                df[f'BER_{safe_name}'] = [ber * 100] * len(attack_names)
 
-                                            styled_df = df.style.applymap(color_ber, subset=['BER (%)'])
+                                            # Column ordering (like reference)
+                                            base_cols = ['Attack', 'Payload (Bytes)', 'Technique', 'Method BER', 'Average BER']
+                                            ber_cols = [col for col in df.columns if col.startswith('BER_') and col != 'BER (%)']
+                                            other_cols = ['Survival']
+                                            final_column_order = base_cols + ['BER (%)'] + ber_cols + other_cols
+
+                                            # Reorder and sort
+                                            df = df[final_column_order]
+                                            df = df.sort_values(by=['Attack']).reset_index(drop=True)
+
+                                            # Dynamic formatting dictionary
+                                            style_format = {
+                                                'BER (%)': '{:.4f}', 'Method BER': '{:.4f}', 'Average BER': '{:.4f}',
+                                                'Payload (Bytes)': '{:.0f}'
+                                            }
+                                            for col in ber_cols:
+                                                style_format[col] = '{:.4f}'
+
+                                            # Apply basic styling without matplotlib gradients
+                                            def color_ber_column(val):
+                                                if val < 1:
+                                                    return 'background-color: #d4edda; color: #155724'
+                                                elif val < 5:
+                                                    return 'background-color: #fff3cd; color: #856404'
+                                                elif val < 10:
+                                                    return 'background-color: #f8d7da; color: #721c24'
+                                                else:
+                                                    return 'background-color: #721c24; color: white'
+
+                                            def style_payload(val):
+                                                if val < 100:
+                                                    return 'background-color: #cce5ff; color: #004085'
+                                                elif val < 500:
+                                                    return 'background-color: #b3d9ff; color: #004085'
+                                                else:
+                                                    return 'background-color: #99ccff; color: #003366'
+
+                                            # Apply manual styling without matplotlib
+                                            styled_df = (df.style
+                                                .format(style_format)
+                                                .applymap(color_ber_column, subset=['BER (%)', 'Method BER'])
+                                                .applymap(color_ber_column, subset=ber_cols)
+                                                .applymap(style_payload, subset=['Payload (Bytes)'])
+                                            )
+
                                             st.dataframe(styled_df, use_container_width=True)
 
                                             # Overall statistics
@@ -681,8 +753,9 @@ with tab3:
 
                                     except Exception as e:
                                         st.error(f"❌ Error during robustness testing: {str(e)}")
+                                        st.error("💡 This error might be due to image format compatibility issues. Try using a different image format (PNG or JPG) or check if the stego image was properly created.")
 
-                except Exception as e:
+            except Exception as e:
                     st.error(f"❌ Error extracting message: {str(e)}")
 
 
